@@ -7,7 +7,25 @@ import plotly.graph_objects as go
 
 from sqlalchemy import create_engine
 
-df = pd.read_csv('aggr.csv', parse_dates=['Entry time'])
+db = 'postgres'
+user = 'postgres'
+password = 'Miazto21'
+server = 'nps-demo-instance.cetuowlskyte.us-east-2.rds.amazonaws.com'
+port = '5432'
+schema = 'strategy'
+
+db_string = f"{db}://{user}:{password}@{server}:{port}/{schema}"
+
+engine = create_engine(db_string)
+
+names = ['Number','Trade type','Entry time','Exposure',
+        'Entry balance','Exit balance','Profit','Pnl (incl fees)',
+        'Exchange','Margin','BTC Price']
+
+df = pd.read_sql("SELECT * from trades", engine.connect(), parse_dates=('entry_time',))
+df.columns = names
+
+# df = pd.read_csv('aggr.csv', parse_dates=['Entry time'])
 
 app = dash.Dash(__name__, external_stylesheets=['https://codepen.io/uditagarwal/pen/oNvwKNP.css',
                                                 'https://codepen.io/uditagarwal/pen/YzKbqyV.css'])
@@ -173,7 +191,6 @@ app.layout = html.Div(
 ############################################
 
 def filter_df(df, exchange, leverage, start_date, end_date):
-    df = df.copy()
     mask_1 = df['Exchange'] == exchange
     mask_2 = df['Margin'] == leverage
     mask_3 = df['Entry time'] >= start_date
@@ -355,7 +372,7 @@ def update_btc_plot(exchange, leverage, start_date, end_date):
     )
 )
 def update_returns_plot(exchange, leverage, start_date, end_date):
-    dff = filter_df(df, exchange, leverage, start_date, end_date)
+    dff = filter_df(df, exchange, leverage, start_date, end_date).copy()
     dff['balance'] = dff['Exit balance'] + dff['Pnl (incl fees)']
 
     return {
